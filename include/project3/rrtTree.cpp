@@ -222,11 +222,9 @@ bool rrtTree::isCollision(point x1, point x2) {
 
 std::vector<point> rrtTree::backtracking(){
     std::vector<point> path;
-    int cnt = nearestNeighbor(x_goal);
+    int cnt = count;//nearestNeighbor(x_goal);
     while(cnt != 0){
-//        printf("\t\tBacktracking: node %d\n", cnt);
         path.insert(path.begin(), ptrTable[cnt]->location);
-//        path.push_back(ptrTable[cnt]->location);
         cnt = ptrTable[cnt]->idx_parent;
     }
     path.push_back(ptrTable[0]->location);
@@ -279,8 +277,10 @@ int rrtTree::generateRRT(double x_max, double x_min, double y_max, double y_min,
 
 int rrtTree::generateRRTst(double x_max, double x_min, double y_max, double y_min, int K, double MaxStep){
     // TODO
-	// card(V) = size of V, the set of vertices
-	// d = dimension of point
+	/* 런타임 에러 segmentation fault(core dumped)때문에 진행이 안되는데 vector 때문일까
+	 * card(V) = size of V, the set of vertices
+	 * d = dimension of point
+	 */
 	double gamma = 1.0;	// Chosen by heuristic
     srand(time(NULL));
     int cnt = 0;
@@ -310,7 +310,6 @@ int rrtTree::generateRRTst(double x_max, double x_min, double y_max, double y_mi
         addVertex(x_new, x_rand, idx_min);
         // Rewire the tree
         for(int i=0; i<X_nears.size(); ++i){
-        	int idx_parent = ptrTable[X_nears[i]]->idx_parent;
         	if(X_nears_col[i] && (ptrTable[count]->cost + X_nears_cost[i] < ptrTable[X_nears[i]]->cost))
         		changeEdge(X_nears[i], count);
          }

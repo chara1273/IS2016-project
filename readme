@@ -1,0 +1,17 @@
+1. 지금 generateRRTst() 함수에서 segmentation fault가 일어나는데 지역변수 vector가 원인인 듯?
+여기에 막혀서 빌드는 되는데.. 아
+
+
+
+2. Dynamic mapping
+dynamic mapping 쪽은 FSM 파트가 대충 짜여있어서(지금은 이론적으로 한번에 90도씩 총 360도 돌면서 4번 mapping하게 되어있음)돌아가는지 꼭 확인해보고, 아마 덜 costly하게 고쳐야 할거야
+
+Kinect 좌표계 <=> Robot 좌표계 변환은 일단 과제파일 Figure 3을 보고 따라했어
+
+
+
+3. RRT*
+과제파일에 제대로 명시되지 않은 부분까지 RRT* 논문 읽고 메꿨음. 과제파일에서 heuristic으로 대체하라고 한 부분도 있긴 한데 지금은 시간이 없어서 고치기 힘들 것 같다.
+
+알고리즘의 Near() 함수에서 범위 반경 parameter에 min(MaxStep, gamma*(log(card(V))/card(V))^(1/d))가 대입되는데, 여기도 heuristic으로 대체할 수 있는 부분이래.
+

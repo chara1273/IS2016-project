@@ -233,7 +233,6 @@ int main(int argc, char** argv){
             	control_rate.sleep();
             }
             // 2. Regenerate path
-            // 왜 rrtTree 인스턴스는 메모리할당 안하면 런타임에러가 뜰까
             rrtTree* get_rrtTree = new rrtTree(robot_pose, path_RRT[look_ahead_idx], dynamic_map, map_origin_x, map_origin_y, res, 12);
             while(get_rrtTree->generateRRTst(world_x_max, world_x_min, world_y_max, world_y_min, 100, 2.50));
             std::vector<point> tmp_path_RRT = get_rrtTree->backtracking();
