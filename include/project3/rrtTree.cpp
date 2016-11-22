@@ -279,7 +279,9 @@ int rrtTree::generateRRT(double x_max, double x_min, double y_max, double y_min,
 
 int rrtTree::generateRRTst(double x_max, double x_min, double y_max, double y_min, int K, double MaxStep){
     // TODO
-	double gamma; int d;	// What is "d"?
+	// card(V) = size of V, the set of vertices
+	// d = dimension of point
+	double gamma = 1.0;	// Chosen by heuristic
     srand(time(NULL));
     int cnt = 0;
     while(1){
@@ -288,9 +290,9 @@ int rrtTree::generateRRTst(double x_max, double x_min, double y_max, double y_mi
         point x_new = newState(idx_nearest, x_rand, MaxStep);	// mu = MaxStep
         if(!isCollision(x_new, ptrTable[idx_nearest]->location)) continue;
         //
-        std::vector<int> X_nears = nearNeighbors(x_new, std::min(MaxStep, gamma*pow(log(count)/count),d));
+        std::vector<int> X_nears = nearNeighbors(x_new, std::min(MaxStep, gamma*pow((log(count)/count),1/2)));
         std::vector<bool> X_nears_col;			// Check collision of (X_near_i, x_new)
-        std::vector<double> X_near_costs;		// Remember c(X_near_i, x_new)
+        std::vector<double> X_nears_cost;		// Remember c(X_near_i, x_new)
         for(int i=0; i<X_nears.size(); ++i)
         	X_nears_col.push_back(isCollision(ptrTable[X_nears[i]]->location, x_new));
         for(int i=0; i<X_nears.size(); ++i)
@@ -314,10 +316,10 @@ int rrtTree::generateRRTst(double x_max, double x_min, double y_max, double y_mi
          }
         //
         if(++cnt > K-1){
-        	if(cnt == 20000) break;
         	int idx_near_goal = (cnt==K)? nearestNeighbor(x_goal): count;
         	point x_nearest = ptrTable[idx_near_goal]->location;
         	if((x_goal.x-x_nearest.x == 0) && (x_goal.y-x_nearest.y == 0)) return 0;
+        	if(cnt == 20000) break;
         }
     }
     return -1;
@@ -333,13 +335,29 @@ double rrtTree::getC(point x1, point x2){
 
 
 void rrtTree::changeEdge(int idx, int idx_parent){
-	ptrTable[idx]->parent = idx_parent;
+	ptrTable[idx]->idx_parent = idx_parent;
 	ptrTable[idx]->cost = ptrTable[idx_parent]->cost + getC(ptrTable[idx]->location, ptrTable[idx_parent]->location);
 }
 
 
 std::vector<int> rrtTree::nearNeighbors(point x_new, double radius){
 	std::vector<int> result;
-
+    for(int i=count-1; i>-1; i--){
+        point tmp_x = ptrTable[i]->location;
+        double lensq = (tmp_x.x - x_new.x)*(tmp_x.x - x_new.x) + (tmp_x.y - x_new.y)*(tmp_x.y - x_new.y);
+        if(radius*radius > lensq)
+        	result.push_back(i);
+    }
+    /* L2 norm 대신 x_new+(+-radius, +-radius) 범위의 모든 point를 리턴
+    for(int i=count-1; i>-1; i--){
+        point tmp_x = ptrTable[i]->location;
+        if(radius > max(tmp_x.x, x_new.x) - min(tmp_x.x, x_new.x)))
+        	result.push_back(ptrTable[i]->location);
+    }
+    for(int j=result.size(); j>-1; j--){
+        if(!(radius > max(result[j].y, x_new.y) - min(result[j].y, x_new.y))))
+        	result.erase(result.begin()+j);
+    }
+    */
 	return result;
 }

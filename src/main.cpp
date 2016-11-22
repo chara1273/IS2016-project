@@ -200,15 +200,16 @@ int main(int argc, char** argv){
             double tmp_x = path_RRT[look_ahead_idx].x;
             double tmp_y = path_RRT[look_ahead_idx].y;
             double dist_sq = (robot_pose.x-tmp_x)*(robot_pose.x-tmp_x) + (robot_pose.y-tmp_y)*(robot_pose.y-tmp_y);
-            if(isCollision())
+            if(isCollision()){
                 state = PATH_PLANNING;
-            else if(dist_sq < 0.04){
+                setcmdvel(0,0);
+            } else if(dist_sq < 0.04){
                 if(++look_ahead_idx == path_RRT.size()-1)
                     state = FINISH;
                 control ctrl = pure_pursuit.get_control(robot_pose, path_RRT[look_ahead_idx]);
                 setcmdvel(ctrl.v, ctrl.w);
-                cmd_vel_pub.publish(cmd_vel);
               }
+            cmd_vel_pub.publish(cmd_vel);
             ros::spinOnce();
             control_rate.sleep();
         } break;
@@ -221,12 +222,29 @@ int main(int argc, char** argv){
              * pop up the opencv window
              * after drawing the dynamic map, transit the state to RUNNING state
              */
-            dynamic_mapping();
+            // 1. Turn around & do dynamic mapping
+            dynamic_map = map.clone();
+            setcmdvel(0,M_PI/4);
+            for(int i=0; i<800; ++i){
+            	if(i%100 == 0)
+            		dynamic_mapping();
+            	cmd_vel_pub.publish(cmd_vel);
+            	ros::spinOnce();
+            	control_rate.sleep();
+            }
+            // 2. Regenerate path
+            // 왜 rrtTree 인스턴스는 메모리할당 안하면 런타임에러가 뜰까
+            rrtTree* get_rrtTree = new rrtTree(robot_pose, path_RRT[look_ahead_idx], dynamic_map, map_origin_x, map_origin_y, res, 12);
+            while(get_rrtTree->generateRRTst(world_x_max, world_x_min, world_y_max, world_y_min, 100, 2.50));
+            std::vector<point> tmp_path_RRT = get_rrtTree->backtracking();
+            delete get_rrtTree;
+            path_RRT.insert(path_RRT.begin(), tmp_path_RRT.begin(), tmp_path_RRT.end());
+            // 3. Show dynamic_map and change state
             cv::namedWindow("kinect");
             cv::imshow("kinect", dynamic_map);
             state = RUNNING;
-            ros::spinOnce();
-            control_rate.sleep();
+//            ros::spinOnce();
+//            control_rate.sleep();
         } break;
 
         case FINISH: {
@@ -311,8 +329,15 @@ bool isCollision()
     //TODO
     /*
      * obstacle emerge in front of robot -> true
-     * other wise -> false
+     * otherwise -> false
      */
+	pcl::PointCloud<pcl::PointXYZ>::iterator pc_iter;
+	for(pc_iter = point_cloud.points.begin(); pc_iter < point_cloud.points.end(); pc_iter++){
+		// robot_frame(x,y,z) = (pc_iter->z, -(pc_iter->x), -(pc_iter->y))
+		// return true if an obstacle is close enough to the robot's face
+		if( (pc_iter->z  < 0.20) && (((pc_iter->x > 0)-(pc_iter->x < 0))*(pc_iter->x) < 0.10) )
+			return true;
+	}
     return false;
 }
 
@@ -323,7 +348,16 @@ void dynamic_mapping()
 	/*
 	* draw dynamic map using variable dynamic_map and variable point_cloud
 	*/
+	pcl::PointCloud<pcl::PointXYZ>::iterator pc_iter;
+	for(pc_iter = point_cloud.points.begin(); pc_iter < point_cloud.points.end(); pc_iter++){
+		// Kinect frame => Grid map frame
+		int pos_x = (int)((cos(robot_pose.th)*(pc_iter->z)+sin(robot_pose.th)*(pc_iter->x) + robot_pose.x)/res + map_origin_x);
+		int pos_y = (int)((sin(robot_pose.th)*(pc_iter->z)-cos(robot_pose.th)*(pc_iter->x) + robot_pose.y)/res + map_origin_y);
+		dynamic_map.at<uchar>(pos_x, pos_y) = 0;
+	}
+
 }
+
 
 void setcmdvel(double v, double w){
     cmd_vel.linear.x = v;
